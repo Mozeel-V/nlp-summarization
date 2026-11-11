@@ -20,15 +20,15 @@ import torch
 from checkpoints import load_model, load_vocab
 from config import (
     CHECKPOINT_DIR,
-    Config,
     DATASET_NAME,
     OUTPUT_DIR,
+    Config,
     Schedule,
     prepare_output_dir,
     resolve_device,
     set_seed,
 )
-from data import load_docs
+from data import Record, load_docs
 from evaluation import evaluate_sources
 from extraction import build_extracted_docs
 from graph import fit_vectorizer
@@ -92,14 +92,10 @@ def main() -> None:
 
     docs = load_docs(dataset_name=args.dataset)
     train_docs = (
-        docs["train"][: args.limit_train]
-        if args.limit_train
-        else docs["train"]
+        docs["train"][: args.limit_train] if args.limit_train else docs["train"]
     )
     val_docs = (
-        docs["validation"][: args.limit_val]
-        if args.limit_val
-        else docs["validation"]
+        docs["validation"][: args.limit_val] if args.limit_val else docs["validation"]
     )
     test_docs = docs["test"][: args.limit_test] if args.limit_test else docs["test"]
 
@@ -131,6 +127,8 @@ def main() -> None:
         )
         model.load_state_dict(checkpoint["state_dict"])
     else:
+        train_data: list[Record]
+        val_data: list[Record]
         if args.train_input == "full":
             train_data = [
                 {"id": doc["id"], "source": doc["source"], "summary": doc["summary"]}
@@ -227,6 +225,7 @@ def main() -> None:
         )
         print("saved", best_path)
 
+    test_data: list[Record]
     if args.train_input == "full":
         test_data = [
             {"id": doc["id"], "source": doc["source"], "summary": doc["summary"]}
@@ -252,9 +251,17 @@ def main() -> None:
         no_repeat_ngram=args.no_repeat_ngram,
         tag="finetune",
     )
+    test_metrics = {
+        "compression_ratio": metrics["compression_ratio"],
+        "extractive_density": metrics["extractive_density"],
+        "rouge1": metrics["rouge1"],
+        "rouge2": metrics["rouge2"],
+        "rougeL": metrics["rougeL"],
+        "consistency_vs_source": metrics["consistency_vs_source"],
+    }
     print(
         "test",
-        {key: round(float(value), 4) for key, value in metrics.items()},
+        {key: round(float(value), 4) for key, value in test_metrics.items()},
     )
 
     results = {
@@ -272,7 +279,7 @@ def main() -> None:
             "min_steps": args.min_steps,
             "no_repeat_ngram": args.no_repeat_ngram,
         },
-        "test": {key: float(value) for key, value in metrics.items()},
+        "test": test_metrics,
     }
     (output_dir / "results.json").write_text(
         json.dumps(results, indent=2),

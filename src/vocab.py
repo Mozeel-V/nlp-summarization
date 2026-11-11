@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import numpy as np
 import torch
 
 from config import PAD, PAD_ID, START, START_ID, STOP, STOP_ID, UNK, UNK_ID
+from data import Record, SummaryInput
 
 _TOKEN_RE: re.Pattern[str] = re.compile(r"<[a-z_]+>|\w+|[^\w\s]")
 
@@ -110,7 +112,7 @@ class Example:
 
 def make_example(
     *,
-    doc: dict,
+    doc: SummaryInput,
     vocab: Vocab,
     max_enc_steps: int = 400,
     max_dec_steps: int = 100,
@@ -121,9 +123,7 @@ def make_example(
 
     summary_tokens = tokenize(text=doc["summary"])
     abstract_ext = abstract2ids(words=summary_tokens, vocab=vocab, oovs=oovs)
-    abstract_ids = [
-        index if index < len(vocab) else UNK_ID for index in abstract_ext
-    ]
+    abstract_ids = [index if index < len(vocab) else UNK_ID for index in abstract_ext]
     decoder_input = [START_ID] + abstract_ids
     target = list(abstract_ext)
     if len(decoder_input) > max_dec_steps:
@@ -185,7 +185,7 @@ def collate(*, examples: list[Example], device: torch.device) -> dict:
 
 def make_examples(
     *,
-    docs: dict[str, list[dict]],
+    docs: Mapping[str, Sequence[Record]],
     vocab: Vocab,
     cfg,
     splits: tuple[str, ...] | None = None,
@@ -206,7 +206,7 @@ def make_examples(
     }
 
 
-def make_data(*, docs: dict[str, list[dict]], cfg) -> tuple[Vocab, dict]:
+def make_data(*, docs: Mapping[str, Sequence[Record]], cfg) -> tuple[Vocab, dict]:
     """Build the vocabulary and encoded examples for every split."""
     counter: Counter[str] = Counter()
     for doc in docs["train"]:

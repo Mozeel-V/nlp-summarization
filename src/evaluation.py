@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import matplotlib
@@ -11,13 +12,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm.auto import tqdm
 
+from data import Document, Record
 from decode import summarize_ids, summarize_text
 from metrics import (
+    Metrics,
     evaluate,
     extractive_density,
     mean_metrics,
     tokenize as metric_tokenize,
 )
+from vocab import Example
+
+
+class SystemMetrics(Metrics):
+    """Averaged metrics with faithfulness against the model input."""
+
+    consistency_vs_source: float
 
 
 def eval_split(
@@ -26,23 +36,25 @@ def eval_split(
     vocab,
     use_cov: bool,
     tag: str,
-    docs: dict,
-    examples: dict,
+    docs: Mapping[str, Sequence[Document]],
+    examples: Mapping[str, Sequence[Example]],
     device,
     limit: int | None = None,
     beam: int = 4,
     min_steps: int = 10,
     no_repeat_ngram: int = 0,
     split: str = "test",
-) -> tuple[dict, list[dict]]:
+) -> tuple[Metrics, list[dict]]:
     """Decode one split and return averaged metrics and per-document rows."""
     split_docs = docs[split][:limit]
     split_examples = examples[split][:limit]
-    rows: list[dict] = []
+    rows: list[Metrics] = []
     predictions: list[dict] = []
     start_time = time.time()
 
-    for index, (doc, example) in enumerate(zip(split_docs, split_examples)):
+    for index, (doc, example) in enumerate(
+        zip(split_docs, split_examples, strict=False)
+    ):
         summary = summarize_ids(
             model=model,
             example=example,
@@ -83,7 +95,7 @@ def evaluate_sources(
     *,
     model,
     vocab,
-    documents: list[dict],
+    documents: Sequence[Record],
     sources: list[str],
     device,
     beam: int = 4,
@@ -92,18 +104,16 @@ def evaluate_sources(
     use_cov: bool = False,
     tag: str = "system",
     selected_indices: list[list[int]] | None = None,
-) -> tuple[dict, list[dict]]:
+) -> tuple[SystemMetrics, list[dict]]:
     """Summarize arbitrary sources and score them against the references."""
     if len(documents) != len(sources):
         raise ValueError("documents and sources must have the same length.")
 
-    rows = []
+    rows: list[Metrics] = []
     consistencies: list[float] = []
     predictions: list[dict] = []
-    pairs = list(zip(documents, sources))
-    for position, (doc, source) in enumerate(
-        tqdm(pairs, desc=tag, leave=False)
-    ):
+    pairs = list(zip(documents, sources, strict=False))
+    for position, (doc, source) in enumerate(tqdm(pairs, desc=tag, leave=False)):
         summary = summarize_text(
             model=model,
             vocab=vocab,
@@ -134,8 +144,15 @@ def evaluate_sources(
             prediction["selected_turn_indices"] = selected_indices[position]
         predictions.append(prediction)
 
-    averaged = mean_metrics(rows=rows)
-    averaged["consistency_vs_source"] = float(np.mean(consistencies))
+    averaged_base = mean_metrics(rows=rows)
+    averaged: SystemMetrics = {
+        "compression_ratio": averaged_base["compression_ratio"],
+        "extractive_density": averaged_base["extractive_density"],
+        "rouge1": averaged_base["rouge1"],
+        "rouge2": averaged_base["rouge2"],
+        "rougeL": averaged_base["rougeL"],
+        "consistency_vs_source": float(np.mean(consistencies)),
+    }
     return averaged, predictions
 
 
@@ -194,11 +211,11 @@ def plot_curves(*, history: list[dict], out_dir: Path) -> None:
 def make_table(
     *,
     extractive_results: Path | None,
-    test_nocov: dict,
-    test_cov: dict,
-) -> dict[str, dict]:
+    test_nocov: Metrics,
+    test_cov: Metrics,
+) -> dict[str, Metrics]:
     """Combine extractive and abstractive results into one table."""
-    table: dict[str, dict] = {}
+    table: dict[str, Metrics] = {}
     if extractive_results is not None and Path(extractive_results).exists():
         print("using extractive results from", extractive_results)
         data = json.loads(Path(extractive_results).read_text())
@@ -214,11 +231,8 @@ def make_table(
     return table
 
 
-def show_table(*, table: dict[str, dict]) -> None:
-    print(
-        f"\n{'system':<30} {'R1':>7} {'R2':>7} {'RL':>7} "
-        f"{'CR':>7} {'ED':>7}"
-    )
+def show_table(*, table: Mapping[str, Metrics]) -> None:
+    print(f"\n{'system':<30} {'R1':>7} {'R2':>7} {'RL':>7} " f"{'CR':>7} {'ED':>7}")
     for name, metrics in table.items():
         print(
             f"{name:<30} {metrics['rouge1']:>7.4f} "
@@ -234,8 +248,8 @@ def make_results(
     cfg,
     schedule,
     vocab,
-    test_nocov: dict,
-    test_cov: dict,
+    test_nocov: Metrics,
+    test_cov: Metrics,
 ) -> dict:
     return {
         "dataset": cfg.dataset,
@@ -295,13 +309,9 @@ def report_stats(
 ) -> None:
     """Print repetition, novelty, and a few side-by-side examples."""
     systems = {
-        "reference": [
-            (row["reference"], row["source"]) for row in preds_nocov
-        ],
+        "reference": [(row["reference"], row["source"]) for row in preds_nocov],
         "PG": [(row["summary"], row["source"]) for row in preds_nocov],
-        "PG + coverage": [
-            (row["summary"], row["source"]) for row in preds_cov
-        ],
+        "PG + coverage": [(row["summary"], row["source"]) for row in preds_cov],
     }
 
     print("% duplicate n-grams within a summary (lower is less repetition)")
@@ -325,7 +335,7 @@ def report_stats(
         values = "".join(f"{value:9.2f}" for value in novel_means)
         print(f"{name:<16}{values}")
 
-    for first, second in list(zip(preds_nocov, preds_cov))[:n_examples]:
+    for first, second in list(zip(preds_nocov, preds_cov, strict=False))[:n_examples]:
         print(
             "\n"
             + "=" * 90

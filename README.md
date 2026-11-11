@@ -14,8 +14,10 @@ scratch in PyTorch.
 
 Test split, 819 dialogues, macro-averaged ROUGE F1 without stemming.
 
+<!-- markdownlint-disable MD013 -->
+
 | System | R1 | R2 | RL | ED | Consistency |
-|---|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: |
 | TextRank | 27.77 | 8.51 | 21.22 | 1.000 | - |
 | LexRank | 28.43 | 8.49 | 21.72 | 1.000 | - |
 | Pointer-generator | 36.22 | 14.54 | 30.56 | 0.839 | - |
@@ -23,6 +25,8 @@ Test split, 819 dialogues, macro-averaged ROUGE F1 without stemming.
 | Pipeline, beam 4, minimum 15 steps, no repeated 3-grams | 38.45 | 15.37 | 31.02 | 0.855 | 0.854 |
 | Pipeline, fine-tuned on extracted turns | 39.55 | 15.83 | 31.29 | 0.851 | 0.851 |
 | Full-dialogue model, matched fine-tune | 39.44 | 15.93 | 31.47 | 0.851 | 0.851 |
+
+<!-- markdownlint-enable MD013 -->
 
 ED is extractive density against the full dialogue. Consistency is the same
 metric against the actual model input.
@@ -43,8 +47,10 @@ validation only, and every script seeds Python, NumPy, and PyTorch to 42.
 Python 3.10 or newer is required. The code is tested on 3.12.
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
+
+The dependencies are declared in `pyproject.toml`.
 
 The reported results were produced on Python 3.12 with torch 2.9.1,
 scikit-learn 1.8.0, numpy 1.26.4, and pandas 2.2.2.

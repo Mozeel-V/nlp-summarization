@@ -87,9 +87,7 @@ class Config:
         else:
             raise ValueError("train_mode must be 'iterations' or 'epochs'.")
         eval_every = (
-            500
-            if self.train_mode == "iterations"
-            else max(1, iters_per_epoch // 2)
+            500 if self.train_mode == "iterations" else max(1, iters_per_epoch // 2)
         )
         return Schedule(
             iters_per_epoch=iters_per_epoch,

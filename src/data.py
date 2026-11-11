@@ -8,17 +8,27 @@ from __future__ import annotations
 
 from typing import TypedDict
 
-from datasets import load_dataset
+from datasets import DatasetDict, load_dataset
 
 from config import DATASET_NAME, SPLIT_NAMES
 
 
-class Document(TypedDict):
-    """One dialogue and its reference summary."""
+class SummaryInput(TypedDict):
+    """The fields needed to encode one example."""
 
-    id: str
     source: str
     summary: str
+
+
+class Record(SummaryInput):
+    """One dialogue text and its reference summary."""
+
+    id: str
+
+
+class Document(Record):
+    """One dialogue split into speaker turns."""
+
     turns: list[str]
 
 
@@ -30,11 +40,13 @@ def split_turns(*, dialogue: str) -> list[str]:
 def load_docs(*, dataset_name: str = DATASET_NAME) -> dict[str, list[Document]]:
     """Load SAMSum and return one list of documents per split."""
     raw = load_dataset(dataset_name)
+    if not isinstance(raw, DatasetDict):
+        raise TypeError("Expected load_dataset to return a DatasetDict.")
     docs: dict[str, list[Document]] = {}
 
     for split in SPLIT_NAMES:
         docs[split] = []
-        for example in raw[split]:
+        for example in raw[split].to_list():
             turns = split_turns(dialogue=example["dialogue"])
             docs[split].append(
                 {

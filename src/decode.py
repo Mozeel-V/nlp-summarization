@@ -108,7 +108,7 @@ def beam_search(
 
         candidates = []
         for parent, item in enumerate(beams):
-            for logp, token in zip(values[parent], indices[parent]):
+            for logp, token in zip(values[parent], indices[parent], strict=False):
                 if _ngram_blocked(
                     tokens=item["tokens"],
                     token=token,
@@ -118,9 +118,7 @@ def beam_search(
                 length = len(item["tokens"]) + 1
                 total = sum(item["logps"]) + logp
                 if length_norm == "gnmt":
-                    rank_score = total / (
-                        ((5.0 + length) / 6.0) ** length_alpha
-                    )
+                    rank_score = total / (((5.0 + length) / 6.0) ** length_alpha)
                 else:
                     rank_score = total / length
                 candidates.append((parent, token, logp, rank_score))

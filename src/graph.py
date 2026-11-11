@@ -35,7 +35,9 @@ def similarity_matrix(
         return np.zeros((len(turns), len(turns)))
 
     vectors = vectorizer.transform(turns)
-    similarity = (vectors @ vectors.T).toarray()
+    # scipy sparse stubs do not expose the matrix transpose type.
+    transpose = vectors.T  # pyright: ignore[reportAttributeAccessIssue]
+    similarity = (vectors @ transpose).toarray()
     np.fill_diagonal(similarity, 0.0)
     return np.clip(similarity, 0.0, 1.0)
 

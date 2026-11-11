@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+from data import Document, Record
 from graph import pagerank, select_top_k, similarity_matrix
 
 GREETINGS: frozenset[str] = frozenset(
@@ -47,9 +49,9 @@ def clean_turns(*, turns: list[str]) -> list[str]:
 
 def prepare_document(
     *,
-    doc: dict,
+    doc: Document,
     filter_noise: bool,
-) -> dict:
+) -> Document:
     """Optionally clean a document, then rebuild its source text."""
     turns = clean_turns(turns=doc["turns"]) if filter_noise else doc["turns"]
     return {
@@ -62,7 +64,7 @@ def prepare_document(
 
 def rank_documents(
     *,
-    documents: list[dict],
+    documents: Sequence[Document],
     vectorizer: TfidfVectorizer,
     threshold: float,
 ) -> list[np.ndarray]:
@@ -81,7 +83,7 @@ def rank_documents(
 
 def extract_turns(
     *,
-    doc: dict,
+    doc: Document,
     scores: np.ndarray,
     m: int,
 ) -> tuple[str, list[int]]:
@@ -93,16 +95,15 @@ def extract_turns(
 
 def build_extracted_docs(
     *,
-    documents: list[dict],
+    documents: Sequence[Document],
     vectorizer: TfidfVectorizer,
     m: int,
     filter_noise: bool,
     threshold: float = 0.5,
-) -> list[dict]:
+) -> list[Record]:
     """Create one source-and-summary record per extracted dialogue."""
     prepared = [
-        prepare_document(doc=doc, filter_noise=filter_noise)
-        for doc in documents
+        prepare_document(doc=doc, filter_noise=filter_noise) for doc in documents
     ]
     scores = rank_documents(
         documents=prepared,
@@ -110,8 +111,8 @@ def build_extracted_docs(
         threshold=threshold,
     )
 
-    extracted: list[dict] = []
-    for doc, score in zip(prepared, scores):
+    extracted: list[Record] = []
+    for doc, score in zip(prepared, scores, strict=False):
         text, _ = extract_turns(doc=doc, scores=score, m=m)
         extracted.append(
             {
@@ -125,7 +126,7 @@ def build_extracted_docs(
 
 def input_reduction(
     *,
-    documents: list[dict],
+    documents: Sequence[Document],
     vectorizer: TfidfVectorizer,
     m: int,
     threshold: float = 0.5,
@@ -137,13 +138,11 @@ def input_reduction(
         threshold=threshold,
     )
     token_pattern = re.compile(r"[A-Za-z0-9]+")
-    full_tokens = sum(
-        len(token_pattern.findall(doc["source"])) for doc in documents
-    )
+    full_tokens = sum(len(token_pattern.findall(doc["source"])) for doc in documents)
     extract_tokens = 0
     turns_kept = 0
     turns_total = 0
-    for doc, score in zip(documents, scores):
+    for doc, score in zip(documents, scores, strict=False):
         text, indices = extract_turns(doc=doc, scores=score, m=m)
         extract_tokens += len(token_pattern.findall(text))
         turns_kept += len(indices)

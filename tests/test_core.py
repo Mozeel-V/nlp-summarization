@@ -11,10 +11,20 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from extraction import build_extracted_docs, clean_turns, extract_turns
-from graph import fit_vectorizer, pagerank, select_top_k, similarity_matrix
-from metrics import evaluate, extractive_density, rouge_l, rouge_n
-from vocab import Vocab, make_example
+from data import Document  # noqa: E402
+from extraction import (  # noqa: E402
+    build_extracted_docs,
+    clean_turns,
+    extract_turns,
+)
+from graph import (  # noqa: E402
+    fit_vectorizer,
+    pagerank,
+    select_top_k,
+    similarity_matrix,
+)
+from metrics import evaluate, extractive_density, rouge_l, rouge_n  # noqa: E402
+from vocab import Vocab, make_example  # noqa: E402
 
 
 class MetricsTest(unittest.TestCase):
@@ -69,9 +79,15 @@ class GraphTest(unittest.TestCase):
 
 class ExtractionTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.documents = [
+        self.documents: list[Document] = [
             {
                 "id": "one",
+                "source": (
+                    "Amanda: hello\n"
+                    "Jerry: I baked cookies today\n"
+                    "Amanda: bring them tomorrow\n"
+                    "Jerry: ok"
+                ),
                 "turns": [
                     "Amanda: hello",
                     "Jerry: I baked cookies today",

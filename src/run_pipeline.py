@@ -18,9 +18,9 @@ from pathlib import Path
 from checkpoints import load_model, load_vocab
 from config import (
     CHECKPOINT_DIR,
-    Config,
     DATASET_NAME,
     OUTPUT_DIR,
+    Config,
     prepare_output_dir,
     resolve_device,
     set_seed,
@@ -95,7 +95,7 @@ def main() -> None:
     )
     extracts = [
         extract_turns(doc=doc, scores=score, m=args.m)
-        for doc, score in zip(test_docs, scores)
+        for doc, score in zip(test_docs, scores, strict=False)
     ]
     sources = [text for text, _ in extracts]
     indices = [selected for _, selected in extracts]

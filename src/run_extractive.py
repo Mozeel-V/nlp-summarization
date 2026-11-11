@@ -16,8 +16,9 @@ from __future__ import annotations
 import argparse
 import json
 import random
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Literal, Mapping, Sequence
+from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -121,9 +122,7 @@ def _tune_lexrank(
                         source=doc["source"],
                     )
                 )
-        table[threshold] = {
-            k: mean_metrics(rows=values) for k, values in rows.items()
-        }
+        table[threshold] = {k: mean_metrics(rows=values) for k, values in rows.items()}
     return table
 
 
@@ -266,8 +265,7 @@ def main() -> None:
     lexrank_val = lexrank_validation[best_lexrank_threshold][best_lexrank_k]
     better_variant: Variant = (
         "textrank"
-        if selection_score(metrics=textrank_val)
-        >= selection_score(metrics=lexrank_val)
+        if selection_score(metrics=textrank_val) >= selection_score(metrics=lexrank_val)
         else "lexrank"
     )
 

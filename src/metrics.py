@@ -78,9 +78,7 @@ def rouge_l(*, hypothesis: str, reference: str) -> float:
 
 
 def _content_tokens(*, text: str) -> list[str]:
-    return [
-        token for token in tokenize(text=text) if token not in ENGLISH_STOP_WORDS
-    ]
+    return [token for token in tokenize(text=text) if token not in ENGLISH_STOP_WORDS]
 
 
 def extractive_density(*, hypothesis: str, source: str) -> float:
@@ -89,9 +87,7 @@ def extractive_density(*, hypothesis: str, source: str) -> float:
     if not hyp_content:
         return 0.0
     source_content = Counter(_content_tokens(text=source))
-    return (
-        sum((Counter(hyp_content) & source_content).values()) / len(hyp_content)
-    )
+    return sum((Counter(hyp_content) & source_content).values()) / len(hyp_content)
 
 
 def evaluate(*, hypothesis: str, reference: str, source: str) -> Metrics:
@@ -115,14 +111,8 @@ def mean_metrics(*, rows: list[Metrics]) -> Metrics:
     if count == 0:
         raise ValueError("Cannot average metrics over zero documents.")
     return {
-        "compression_ratio": sum(
-            row["compression_ratio"] for row in rows
-        )
-        / count,
-        "extractive_density": sum(
-            row["extractive_density"] for row in rows
-        )
-        / count,
+        "compression_ratio": sum(row["compression_ratio"] for row in rows) / count,
+        "extractive_density": sum(row["extractive_density"] for row in rows) / count,
         "rouge1": sum(row["rouge1"] for row in rows) / count,
         "rouge2": sum(row["rouge2"] for row in rows) / count,
         "rougeL": sum(row["rougeL"] for row in rows) / count,

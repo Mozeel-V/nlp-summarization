@@ -20,8 +20,8 @@ matplotlib.use("Agg")
 from checkpoints import load_model, load_vocab
 from config import (
     CHECKPOINT_DIR,
-    Config,
     OUTPUT_DIR,
+    Config,
     prepare_output_dir,
     resolve_device,
     set_seed,

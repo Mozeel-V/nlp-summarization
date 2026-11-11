@@ -21,8 +21,7 @@ def batch_stream(*, examples: list, rng, batch_size: int, device: torch.device):
         permutation = rng.permutation(len(examples))
         for start in range(0, len(permutation) - batch_size + 1, batch_size):
             batch = [
-                examples[index]
-                for index in permutation[start : start + batch_size]
+                examples[index] for index in permutation[start : start + batch_size]
             ]
             yield collate(examples=batch, device=device)
 
@@ -118,8 +117,7 @@ class Trainer:
             running_average = blob["run_avg"]
             history[:] = blob["history"]
             print(
-                f"[{tag}] resuming from iteration "
-                f"{iteration_start}/{n_iters}",
+                f"[{tag}] resuming from iteration " f"{iteration_start}/{n_iters}",
                 flush=True,
             )
 
@@ -279,6 +277,4 @@ class Trainer:
         return model
 
     def dump_vocab(self, *, vocab) -> None:
-        (self.out_dir / "vocab.json").write_text(
-            json.dumps(vocab.to_json())
-        )
+        (self.out_dir / "vocab.json").write_text(json.dumps(vocab.to_json()))

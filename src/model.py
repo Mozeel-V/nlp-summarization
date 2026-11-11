@@ -131,12 +131,8 @@ class PointerGenerator(nn.Module):
             batch_first=True,
             total_length=enc_ids.size(1),
         )
-        decoder_hidden = F.relu(
-            self.reduce_h(torch.cat([hidden[0], hidden[1]], -1))
-        )
-        decoder_cell = F.relu(
-            self.reduce_c(torch.cat([cell[0], cell[1]], -1))
-        )
+        decoder_hidden = F.relu(self.reduce_h(torch.cat([hidden[0], hidden[1]], -1)))
+        decoder_cell = F.relu(self.reduce_c(torch.cat([cell[0], cell[1]], -1)))
         return (
             encoder_out,
             self.W_h(encoder_out),
@@ -160,9 +156,7 @@ class PointerGenerator(nn.Module):
     ):
         """Run one decoder step for training or beam search."""
         y_prev = y_prev.masked_fill(y_prev >= self.V, UNK_ID)
-        projected = self.input_proj(
-            torch.cat([self.embedding(y_prev), context], -1)
-        )
+        projected = self.input_proj(torch.cat([self.embedding(y_prev), context], -1))
         h, c = self.cell(projected, (h, c))
         state = torch.cat([c, h], -1)
 
@@ -174,9 +168,7 @@ class PointerGenerator(nn.Module):
         attention = F.softmax(scores, dim=-1)
         context = torch.bmm(attention.unsqueeze(1), encoder_out).squeeze(1)
 
-        p_gen = torch.sigmoid(
-            self.pgen_lin(torch.cat([context, c, h, projected], -1))
-        )
+        p_gen = torch.sigmoid(self.pgen_lin(torch.cat([context, c, h, projected], -1)))
         output = self.out_proj(torch.cat([h, context], -1))
         vocab_dist = F.softmax(self.vocab_proj(output), dim=-1)
         mixed = torch.cat(
